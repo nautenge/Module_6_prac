@@ -1,0 +1,366 @@
+using System;
+
+public enum LogLevel{
+    INFO,WARNING,ERROR
+}
+
+public class Logger{
+    private static Logger _instance;
+    private static readonly object _lock = new object();
+    private LogLevel _currentLogLevel;
+    private string _logFilePath = "default.log";
+
+    private Logger() {
+        _currentLogLevel = LogLevel.INFO;
+    }
+
+    public static Logger GetInstance(){
+        if (_instance == null){
+            lock (_lock){
+                if (_instance == null){
+                    _instance = new Logger();
+                }
+            }
+        }
+        return _instance;
+    }
+
+    public void Log(string message, LogLevel level){
+        if (level >= _currentLogLevel){
+            Console.WriteLine($"{DateTime.Now} [{level}] {message}");
+        }
+    }
+
+    public void SetLogLevel(LogLevel level){
+        _currentLogLevel = level;
+    }
+
+    public void LoadConfiguration(LogLevel logLevel, string logFilePath){
+        _currentLogLevel = logLevel;
+        _logFilePath = logFilePath;
+    }
+}
+
+public class LogReader{
+    public void ReadLogs(string logFilePath, LogLevel level){
+        Console.WriteLine($"Displaying logs for level: {level}");
+    }
+}
+
+class Program{
+    static void Main(){
+        Logger logger = Logger.GetInstance();
+
+        logger.LoadConfiguration(LogLevel.WARNING, "default.log");
+ 
+        logger.Log("This is an info message", LogLevel.INFO);
+        logger.Log("This is a warning message", LogLevel.WARNING);
+        logger.Log("This is an error message", LogLevel.ERROR);
+ 
+        LogReader reader = new LogReader();
+        reader.ReadLogs("default.log", LogLevel.ERROR);
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+using System;
+
+public interface IReportBuilder{
+    void SetHeader(string header);
+    void SetContent(string content);
+    void SetFooter(string footer);
+    void AddSection(string sectionName, string sectionContent);
+    void SetStyle(ReportStyle style);
+    Report GetReport();
+}
+
+public class ReportStyle{
+    public string BackgroundColor { get; set; }
+    public string FontColor { get; set; }
+    public int FontSize { get; set; }
+}
+
+public class Report{
+    public string Header { get; set; }
+    public string Content { get; set; }
+    public string Footer { get; set; }
+    private const int MaxSections = 10;
+    private string[] sectionNames = new string[MaxSections];
+    private string[] sectionContents = new string[MaxSections];
+    private int sectionCount = 0;
+    public ReportStyle Style { get; set; }
+
+    public void AddSection(string sectionName, string sectionContent){
+        if (sectionCount < MaxSections){
+            sectionNames[sectionCount] = sectionName;
+            sectionContents[sectionCount] = sectionContent;
+            sectionCount++;
+        }
+        else{
+            Console.WriteLine("Exceeded the maximum number of sections.");
+        }
+    }
+
+    public void Export(string format){
+        Console.WriteLine($"Exporting report in {format} format...");
+        Console.WriteLine($"Header: {Header}");
+        Console.WriteLine($"Content: {Content}");
+        for (int i = 0; i < sectionCount; i++){
+            Console.WriteLine($"Section: {sectionNames[i]}");
+            Console.WriteLine($"Content: {sectionContents[i]}");
+        }
+        Console.WriteLine($"Footer: {Footer}");
+        Console.WriteLine($"Style: Background={Style.BackgroundColor}, FontColor={Style.FontColor}, FontSize={Style.FontSize}");
+        Console.WriteLine("===============================================");
+    }
+}
+
+public class TextReportBuilder : IReportBuilder{
+    private Report _report = new Report();
+
+    public void SetHeader(string header){
+        _report.Header = header;
+    }
+
+    public void SetContent(string content){
+        _report.Content = content;
+    }
+
+    public void SetFooter(string footer){
+        _report.Footer = footer;
+    }
+
+    public void AddSection(string sectionName, string sectionContent){
+        _report.AddSection(sectionName, sectionContent);
+    }
+
+    public void SetStyle(ReportStyle style){
+        _report.Style = style;
+    }
+
+    public Report GetReport(){
+        return _report;
+    }
+}
+
+public class HtmlReportBuilder : IReportBuilder{
+    private Report _report = new Report();
+
+    public void SetHeader(string header){
+        _report.Header = $"<h1>{header}</h1>";
+    }
+
+    public void SetContent(string content){
+        _report.Content = $"<p>{content}</p>";
+    }
+
+    public void SetFooter(string footer){
+        _report.Footer = $"<footer>{footer}</footer>";
+    }
+
+    public void AddSection(string sectionName, string sectionContent){
+        _report.AddSection(sectionName, $"<section><h2>{sectionName}</h2><p>{sectionContent}</p></section>");
+    }
+
+    public void SetStyle(ReportStyle style){
+        _report.Style = style;
+    }
+
+    public Report GetReport(){
+        return _report;
+    }
+}
+
+public class PdfReportBuilder : IReportBuilder{
+    private Report _report = new Report();
+
+    public void SetHeader(string header){
+        _report.Header = $"PDF Header: {header}";
+    }
+
+    public void SetContent(string content){
+        _report.Content = $"PDF Content: {content}";
+    }
+
+    public void SetFooter(string footer){
+        _report.Footer = $"PDF Footer: {footer}";
+    }
+
+    public void AddSection(string sectionName, string sectionContent){
+        _report.AddSection(sectionName, $"PDF Section: {sectionName}, Content: {sectionContent}");
+    }
+
+    public void SetStyle(ReportStyle style){
+        _report.Style = style;
+    }
+
+    public Report GetReport(){
+        return _report;
+    }
+}
+
+public class ReportDirector{
+    public void ConstructReport(IReportBuilder builder, ReportStyle style){
+        builder.SetHeader("Annual Report 2024");
+        builder.SetContent("This is the main content of the report.");
+        builder.AddSection("Introduction", "Introduction section content.");
+        builder.AddSection("Financial Data", "Financial data section content.");
+        builder.SetFooter("Report Footer 2024");
+        builder.SetStyle(style);
+    }
+}
+
+class Program{
+    static void Main(){
+        ReportStyle style = new ReportStyle{
+            BackgroundColor = "White",
+            FontColor = "Black",
+            FontSize = 12
+        };
+
+        IReportBuilder textBuilder = new TextReportBuilder();
+        ReportDirector director = new ReportDirector();
+        director.ConstructReport(textBuilder, style);
+        Report textReport = textBuilder.GetReport();
+        textReport.Export("Text");
+
+        IReportBuilder htmlBuilder = new HtmlReportBuilder();
+        director.ConstructReport(htmlBuilder, style);
+        Report htmlReport = htmlBuilder.GetReport();
+        htmlReport.Export("HTML");
+
+        IReportBuilder pdfBuilder = new PdfReportBuilder();
+        director.ConstructReport(pdfBuilder, style);
+        Report pdfReport = pdfBuilder.GetReport();
+        pdfReport.Export("PDF");
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+using System;
+
+public interface ICloneable<T>{
+    T Clone();
+}
+
+public class Weapon : ICloneable<Weapon>{
+    public string Name { get; set; }
+    public int Damage { get; set; }
+
+    public Weapon(string name, int damage){
+        Name = name;
+        Damage = damage;
+    }
+
+    public Weapon Clone(){
+        return new Weapon(Name, Damage);
+    }
+
+    public override string ToString(){
+        return $"{Name} (Damage: {Damage})";
+    }
+}
+
+public class Armor : ICloneable<Armor>{
+    public string Name { get; set; }
+    public int Defense { get; set; }
+
+    public Armor(string name, int defense){
+        Name = name;
+        Defense = defense;
+    }
+
+    public Armor Clone(){
+        return new Armor(Name, Defense);
+    }
+
+    public override string ToString(){
+        return $"{Name} (Defense: {Defense})";
+    }
+}
+
+public class Skill : ICloneable<Skill>{
+    public string SkillName { get; set; }
+    public string Type { get; set; }
+
+    public Skill(string skillName, string type){
+        SkillName = skillName;
+        Type = type;
+    }
+
+    public Skill Clone(){
+        return new Skill(SkillName, Type);
+    }
+
+    public override string ToString(){
+        return $"{SkillName} ({Type} skill)";
+    }
+}
+
+public class Character : ICloneable<Character>{
+    public string Name { get; set; }
+    public int Health { get; set; }
+    public int Strength { get; set; }
+    public int Agility { get; set; }
+    public int Intelligence { get; set; }
+
+    public Weapon CharacterWeapon { get; set; }
+    public Armor CharacterArmor { get; set; }
+    public Skill[] Skills { get; set; }
+
+    public Character(string name, int health, int strength, int agility, int intelligence, Weapon weapon, Armor armor, Skill[] skills){
+        Name = name;
+        Health = health;
+        Strength = strength;
+        Agility = agility;
+        Intelligence = intelligence;
+        CharacterWeapon = weapon;
+        CharacterArmor = armor;
+        Skills = skills;
+    }
+
+    public Character Clone(){
+        Weapon clonedWeapon = CharacterWeapon.Clone();
+        Armor clonedArmor = CharacterArmor.Clone();
+
+        Skill[] clonedSkills = new Skill[Skills.Length];
+        for (int i = 0; i < Skills.Length; i++){
+            clonedSkills[i] = Skills[i].Clone();
+        }
+
+        return new Character(Name, Health, Strength, Agility, Intelligence, clonedWeapon, clonedArmor, clonedSkills);
+    }
+
+    public override string ToString(){
+        string skillList = "";
+        foreach (var skill in Skills){
+            skillList += skill + "\n";
+        }
+
+        return $"Name: {Name}\n" +
+               $"Health: {Health}, Strength: {Strength}, Agility: {Agility}, Intelligence: {Intelligence}\n" +
+               $"Weapon: {CharacterWeapon}\nArmor: {CharacterArmor}\nSkills:\n{skillList}";
+    }
+}
+
+public class Program{
+    public static void Main(string[] args){
+        Weapon sword = new Weapon("Excalibur", 50);
+        Armor plateArmor = new Armor("Dragon Armor", 40);
+        Skill[] skills = { new Skill("Slash", "Physical"), new Skill("Fireball", "Magical") };
+
+        Character warrior = new Character("Warrior", 100, 80, 70, 40, sword, plateArmor, skills);
+
+        Character clonedWarrior = warrior.Clone();
+
+        Console.WriteLine("Original Character:\n" + warrior);
+        Console.WriteLine("\nCloned Character:\n" + clonedWarrior);
+
+        clonedWarrior.Name = "Cloned Warrior";
+        clonedWarrior.CharacterWeapon.Name = "Shadow Blade";
+        clonedWarrior.Skills[0].SkillName = "Heavy Slash";
+
+        Console.WriteLine("\nAfter modifying the cloned character:\n");
+
+        Console.WriteLine("Original Character:\n" + warrior);
+        Console.WriteLine("\nCloned Character:\n" + clonedWarrior);
+    }
+}
